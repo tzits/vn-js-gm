@@ -18,7 +18,7 @@ window.addEventListener('load', function() {
             this.speedY = 0;
             this.dx = 0;
             this.dy = 0;
-            this.speedModifier = 20;
+            this.speedModifier = 5;
 
         }
         draw(context) {
@@ -37,17 +37,28 @@ window.addEventListener('load', function() {
         update() {
             this.dx = this.game.mouse.x - this.collisionX
             this.dy = this.game.mouse.y - this.collisionY
-            const distance = Math.hypot(this.dy, this.dx)
-            if (distance > this.speedModifier) {
-                this.speedX = (this.dx)/distance || 0
-                this.speedY = (this.dy)/distance || 0
+            const dist = Math.hypot(this.dy, this.dx)
+            if (dist > this.speedModifier) {
+                this.speedX = (this.dx)/dist || 0
+                this.speedY = (this.dy)/dist || 0
             } else {
                 this.speedX = 0 
                 this.speedY = 0
             }
             this.collisionX += this.speedX * this.speedModifier;
             this.collisionY += this.speedY * this.speedModifier;
-
+            //check collision with obstacle
+            // [(distance < sumOfRadii), distance, sumOfRadii, dx, dy]
+            this.game.obstacles.forEach(obstacle => {
+                let [collision, distance, sumOfRadii, dx, dy] = this.game.checkCollision(this, obstacle)
+                if (collision) {
+                    const unit_x = dx /distance;
+                    const unit_y = dy/distance;
+                    this.collisionX = obstacle.collisionX + (sumOfRadii + 1) * unit_x
+                    this.collisionY = obstacle.collisionY + (sumOfRadii + 1) * unit_y
+                }
+                
+            })
         }
 
     }
@@ -65,9 +76,11 @@ window.addEventListener('load', function() {
             this.height = this.spriteHeight
             this.spriteX = this.collisionX - this.width * 0.5;
             this.spriteY = this.collisionY - this.height * 0.5 - 70;
+            this.frameX = Math.floor(Math.random() * 4)
+            this.frameY = Math.floor(Math.random() * 3)
         }
         draw (context) {
-            context.drawImage(this.image, 0, 0, this.spriteWidth, this.spriteHeight, this.spriteX, this.spriteY, this.width, this.height)
+            context.drawImage(this.image, this.frameX * this.spriteWidth, this.frameY * this.spriteHeight, this.spriteWidth, this.spriteHeight, this.spriteX, this.spriteY, this.width, this.height)
             context.beginPath();
             context.arc(this.collisionX,this.collisionY,this.collisionRadius,0,Math.PI * 2)
             context.save();
@@ -85,6 +98,7 @@ window.addEventListener('load', function() {
             this.height = this.canvas.height;
             this.player = new Player(this);
             this.numberOfObstacles = 10;
+            this.topMargin = 260;
             this.obstacles = [];
             this.mouse = {
                 x: this.width * 0.5,
@@ -111,9 +125,16 @@ window.addEventListener('load', function() {
             })
         }
         render(context) {
+            this.obstacles.forEach(obstacle => obstacle.draw(context))
             this.player.draw(context);
             this.player.update()
-            this.obstacles.forEach(obstacle => obstacle.draw(context))
+        }
+        checkCollision(a, b) {
+            const dx = a.collisionX - b.collisionX
+            const dy = a.collisionY - b.collisionY
+            const distance = Math.hypot(dy, dx)
+            const sumOfRadii = a.collisionRadius + b.collisionRadius
+            return [(distance < sumOfRadii), distance, sumOfRadii, dx, dy]
         }
         init() {
             let attempts = 0;
@@ -123,13 +144,18 @@ window.addEventListener('load', function() {
                 this.obstacles.forEach(obstacle => {
                     const dx = testObstacle.collisionX - obstacle.collisionX;
                     const dy = testObstacle.collisionY - obstacle.collisionY;
+                    const distanceBuffer = 100;
                     const distance = Math.hypot(dy, dx)
-                    const sumOfRadii = testObstacle.collisionRadius + obstacle.collisionRadius
+                    const sumOfRadii = testObstacle.collisionRadius + obstacle.collisionRadius + distanceBuffer
                     if (distance < sumOfRadii) {
                         overlap = true
                     }
                 });
-                if (!overlap) {
+                const margin = testObstacle.collisionRadius * 2;
+                if (!overlap && 
+                    testObstacle.spriteX > 0 && testObstacle.spriteX < this.width - testObstacle.width &&
+                    testObstacle.collisionY > this.topMargin + margin && testObstacle.collisionY < this.height - margin
+                    ) {
                     this.obstacles.push(testObstacle)
                 }
 
