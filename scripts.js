@@ -412,8 +412,21 @@ window.addEventListener('load', function() {
                 }
             })
             window.addEventListener('keydown', (e) => {
-                if (e.key == 'd') this.debug = !this.debug;
+                if (e.key == 'j') this.debug = !this.debug;
                 else if (e.key == 'r') this.restart()
+                else if (e.key == 'w') {
+                    this.mouse.y -= 30;
+                }
+                else if (e.key == 's') {
+                    this.mouse.y += 30;
+                }
+                else if (e.key == 'a') {
+                    this.mouse.x -= 30;
+                }
+                else if (e.key == 'd') {
+                    this.mouse.x += 30;
+
+                }
             })
         }
         render(context, dT) {
